@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}{{ job.job_name }} · {{ business_name }}{% endblock %}
+{% block content %}
+<section class="card public-card">
+  <p class="hint">{{ business_name }}</p>
+  <h1>{{ job.job_name }}</h1>
+  <p class="lede">For {{ first_name(job.customer_name) or job.customer_name }}</p>
+
+  <p class="amount-big"><span class="badge badge-{{ job.state }} badge-lg">{{ state_label(job.state) }}</span></p>
+
+  <dl class="facts">
+    <div>
+      <dt>Scheduled</dt>
+      <dd>{{ format_date_display(job.scheduled_date) }}{% if job.scheduled_window %} · {{ job.scheduled_window }}{% endif %}</dd>
+    </div>
+    {% if job.state == 'on_hold' %}
+    <div>
+      <dt>Reason</dt>
+      <dd>{{ job.reason or "—" }}</dd>
+    </div>
+    {% if job.new_date %}
+    <div>
+      <dt>New date</dt>
+      <dd>{{ format_date_display(job.new_date) }}{% if job.new_window %} · {{ job.new_window }}{% endif %}</dd>
+    </div>
+    {% endif %}
+    {% endif %}
+  </dl>
+
+  <h2>Updates</h2>
+  <ul class="timeline">
+    {% for e in events %}
+    <li>
+      <div>
+        <span class="kind">{{ event_label(e.kind) }}</span>
+        {% if e.reason %}<div class="hint">{{ e.reason }}</div>{% endif %}
+        {% if e.new_date %}<div class="hint">New date: {{ format_date_display(e.new_date) }}{% if e.new_window %} · {{ e.new_window }}{% endif %}</div>{% endif %}
+      </div>
+      <span class="at">{{ e.at }} UTC</span>
+    </li>
+    {% else %}
+    <li class="empty">No updates yet.</li>
+    {% endfor %}
+  </ul>
+
+  <p class="hint" style="margin-top:1.25rem;">Questions? Call us.{% if business_phone %} {{ business_phone }}{% endif %}</p>
+</section>
+{% endblock %}
