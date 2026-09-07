@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}Morning board · SkyHold{% endblock %}
+{% block content %}
+<div class="page-head" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:1rem;">
+  <div>
+    <h1>Morning board</h1>
+    <p class="lede">Jobs scheduled for <strong>{{ today }}</strong>. Human confirm only — weather never auto-holds.</p>
+  </div>
+  <a class="btn" href="{{ url_for('new_job') }}">New job</a>
+</div>
+
+{% if weather %}
+<section class="card weather-banner {% if weather.suggest_hold %}weather-hold{% else %}weather-ok{% endif %}">
+  <p class="weather-msg">{{ weather.message }}</p>
+  <p class="hint">Advisory only. Hit Hold / Proceed / All-clear yourself.</p>
+</section>
+{% endif %}
+
+{% if not today_jobs %}
+<section class="card">
+  <p class="empty">No weather-sensitive jobs scheduled for today. <a href="{{ url_for('new_job') }}">Create one</a> or check <a href="{{ url_for('jobs_list') }}">upcoming jobs</a>.</p>
+</section>
+{% else %}
+{% for j in today_jobs %}
+<section class="card board-job">
+  <div class="seq-head">
+    <div>
+      <h2><a href="{{ url_for('job_detail', job_id=j.id) }}">{{ j.job_name }}</a></h2>
+      <p class="lede">{{ j.customer_name }}{% if j.scheduled_window %} · {{ j.scheduled_window }}{% endif %}{% if j.site_label %} · {{ j.site_label }}{% endif %}</p>
+    </div>
+    <span class="badge badge-{{ j.state }}">{{ state_label(j.state) }}</span>
+  </div>
+
+  {% if j.state == 'on_hold' and j.reason %}
+  <p class="hint">Hold reason: {{ j.reason }}{% if j.new_date %} · New date {{ format_date_display(j.new_date) }}{% endif %}</p>
+  {% endif %}
+
+  <div class="decision-grid">
+    <form method="post" action="{{ url_for('hold_job', job_id=j.id) }}" class="stack decision-card">
+      <h3>Hold</h3>
+      <label>Reason *
+        <input name="reason" required placeholder="High winds">
+      </label>
+      <label>New date
+        <input type="date" name="new_date">
+      </label>
+      <label>New window
+        <input name="new_window" placeholder="7am–3pm">
+      </label>
+      {% if j.customer_email or j.customer_phone or j.crew_emails or j.crew_phones %}
+      <label class="check-row">
+        <input type="checkbox" name="notify" value="1" checked>
+        Notify customer + crew
+      </label>
+      {% endif %}
+      <button type="submit" class="btn btn-danger">Hold</button>
+    </form>
+
+    <form method="post" action="{{ url_for('proceed_job', job_id=j.id) }}" class="stack decision-card">
+      <h3>Proceed</h3>
+      <p class="hint">Weather ok — go as scheduled.</p>
+      {% if j.customer_email or j.customer_phone or j.crew_emails or j.crew_phones %}
+      <label class="check-row">
+        <input type="checkbox" name="notify" value="1" checked>
+        Notify customer + crew
+      </label>
+      {% endif %}
+      <button type="submit" class="btn btn-ok">Proceed</button>
+    </form>
+
+    <form method="post" action="{{ url_for('all_clear_job', job_id=j.id) }}" class="stack decision-card">
+      <h3>All-clear</h3>
+      <label>Note
+        <input name="note" placeholder="Radar cleared">
+      </label>
+      <label>Confirm / new date
+        <input type="date" name="new_date" value="{{ j.new_date or '' }}">
+      </label>
+      <label>Window
+        <input name="new_window" value="{{ j.new_window or '' }}" placeholder="7am–3pm">
+      </label>
+      {% if j.customer_email or j.customer_phone or j.crew_emails or j.crew_phones %}
+      <label class="check-row">
+        <input type="checkbox" name="notify" value="1" checked>
+        Notify customer + crew
+      </label>
+      {% endif %}
+      <button type="submit" class="btn btn-ok">All-clear</button>
+    </form>
+  </div>
+</section>
+{% endfor %}
+{% endif %}
+
+<section class="card">
+  <div class="seq-head">
+    <h2>Upcoming</h2>
+    <a href="{{ url_for('jobs_list') }}">All jobs →</a>
+  </div>
+  {% if not upcoming %}
+  <p class="empty">No upcoming weather-sensitive jobs.</p>
+  {% else %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Job</th>
+          <th>Customer</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for j in upcoming %}
+        <tr>
+          <td>{{ j.scheduled_date }}</td>
+          <td><a href="{{ url_for('job_detail', job_id=j.id) }}">{{ j.job_name }}</a></td>
+          <td>{{ j.customer_name }}</td>
+          <td><span class="badge badge-{{ j.state }}">{{ state_label(j.state) }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}
