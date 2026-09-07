@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}{{ job.job_name }} · SkyHold{% endblock %}
+{% block content %}
+<p class="crumb no-print"><a href="{{ url_for('index') }}">Board</a> · <a href="{{ url_for('jobs_list') }}">Jobs</a> · #{{ job.id }}</p>
+
+<section class="card">
+  <div class="seq-head">
+    <div>
+      <h1>{{ job.job_name }}</h1>
+      <p class="lede">{{ job.customer_name }}{% if job.job_ref %} · Job {{ job.job_ref }}{% endif %}</p>
+    </div>
+    <span class="badge badge-{{ job.state }}">{{ state_label(job.state) }}</span>
+  </div>
+
+  <dl class="facts">
+    <div>
+      <dt>Scheduled</dt>
+      <dd>{{ format_date_display(job.scheduled_date) }}{% if job.scheduled_window %} · {{ job.scheduled_window }}{% endif %}</dd>
+    </div>
+    <div>
+      <dt>Site</dt>
+      <dd>{{ job.site_label or "—" }}</dd>
+    </div>
+    <div>
+      <dt>Trade</dt>
+      <dd>{{ job.trade or "—" }}</dd>
+    </div>
+  </dl>
+
+  {% if job.state == 'on_hold' %}
+  <p><strong>Hold:</strong> {{ job.reason or "—" }}{% if job.new_date %} · New {{ format_date_display(job.new_date) }}{% if job.new_window %} {{ job.new_window }}{% endif %}{% endif %}</p>
+  {% endif %}
+
+  {% if job.notes %}
+  <h2>Internal notes</h2>
+  <p class="body">{{ job.notes }}</p>
+  {% endif %}
+
+  <p><strong>Public link</strong><br><code>{{ public_url }}</code></p>
+
+  <div class="btn-row no-print">
+    <button type="button" class="btn" onclick="copyText({{ public_url|tojson }}, this)">Copy link</button>
+    <button type="button" class="btn btn-quiet" onclick="copyText({{ blurb|tojson }}, this)">Copy blurb</button>
+  </div>
+
+  {% if job.customer_email or job.customer_phone or job.crew_emails or job.crew_phones %}
+  <p class="hint">
+    {% if job.customer_email %}Customer email: {{ job.customer_email }}{% endif %}
+    {% if job.customer_phone %}{% if job.customer_email %} · {% endif %}Phone: {{ job.customer_phone }}{% endif %}
+    {% if job.crew_emails %}<br>Crew emails: {{ job.crew_emails }}{% endif %}
+    {% if job.crew_phones %}<br>Crew phones: {{ job.crew_phones }}{% endif %}
+  </p>
+  {% endif %}
+  {% if not smtp_configured and not sms_configured %}
+  <p class="hint">SMTP and Twilio are unset — share via Copy link. Notify stays optional until a channel is configured.</p>
+  {% endif %}
+</section>
+
+<section class="card no-print">
+  <h2>Decide</h2>
+  <div class="decision-grid">
+    <form method="post" action="{{ url_for('hold_job', job_id=job.id) }}" class="stack decision-card">
+      <h3>Hold</h3>
+      <label>Reason *
+        <input name="reason" required placeholder="High winds" value="{{ job.reason or '' }}">
+      </label>
+      <label>New date
+        <input type="date" name="new_date" value="{{ job.new_date or '' }}">
+      </label>
+      <label>New window
+        <input name="new_window" value="{{ job.new_window or '' }}" placeholder="7am–3pm">
+      </label>
+      {% if can_notify %}
+      <label class="check-row">
+        <input type="checkbox" name="notify" value="1" {% if notify_default %}checked{% endif %}>
+        Notify customer + crew
+      </label>
+      {% endif %}
+      <button type="submit" class="btn btn-danger">Hold</button>
+    </form>
+
+    <form method="post" action="{{ url_for('proceed_job', job_id=job.id) }}" class="stack decision-card">
+      <h3>Proceed</h3>
+      <p class="hint">Weather ok — go as scheduled.</p>
+      {% if can_notify %}
+      <label class="check-row">
+        <input type="checkbox" name="notify" value="1" {% if notify_default %}checked{% endif %}>
+        Notify customer + crew
+      </label>
+      {% endif %}
+      <button type="submit" class="btn btn-ok">Proceed</button>
+    </form>
+
+    <form method="post" action="{{ url_for('all_clear_job', job_id=job.id) }}" class="stack decision-card">
+      <h3>All-clear</h3>
+      <label>Note
+        <input name="note" placeholder="Radar cleared">
+      </label>
+      <label>Confirm / new date
+        <input type="date" name="new_date" value="{{ job.new_date or '' }}">
+      </label>
+      <label>Window
+        <input name="new_window" value="{{ job.new_window or '' }}">
+      </label>
+      {% if can_notify %}
+      <label class="check-row">
+        <input type="checkbox" name="notify" value="1" {% if notify_default %}checked{% endif %}>
+        Notify customer + crew
+      </label>
+      {% endif %}
+      <button type="submit" class="btn btn-ok">All-clear</button>
+    </form>
+  </div>
+</section>
+
+<section class="card no-print copy-fields">
+  <h2>Blurb</h2>
+  <textarea readonly>{{ blurb }}</textarea>
+</section>
+
+<section class="card">
+  <h2>Timeline</h2>
+  <ul class="timeline">
+    {% for e in events %}
+    <li>
+      <div>
+        <span class="kind">{{ event_label(e.kind) }}</span>
+        {% if e.state %}<span class="hint"> → {{ state_label(e.state) }}</span>{% endif %}
+        {% if e.reason %}<div class="hint">{{ e.reason }}</div>{% endif %}
+        {% if e.new_date %}<div class="hint">New date: {{ format_date_display(e.new_date) }}{% if e.new_window %} · {{ e.new_window }}{% endif %}</div>{% endif %}
+      </div>
+      <span class="at">{{ e.at }} UTC</span>
+    </li>
+    {% else %}
+    <li class="empty">No events yet.</li>
+    {% endfor %}
+  </ul>
+</section>
+
+{% if notify_log %}
+<section class="card">
+  <h2>Notify log</h2>
+  <ul class="timeline">
+    {% for n in notify_log %}
+    <li>
+      <div>
+        <span class="kind">{{ n.channel }}</span>
+        <span class="hint">{{ n.destination }} · {% if n.ok %}ok{% else %}fail{% endif %}{% if n.error %} ({{ n.error }}){% endif %}</span>
+      </div>
+      <span class="at">{{ n.at }} UTC</span>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% endblock %}
