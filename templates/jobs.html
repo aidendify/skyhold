@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Jobs · SkyHold{% endblock %}
+{% block content %}
+<div class="page-head" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:1rem;">
+  <div>
+    <h1>Weather-sensitive jobs</h1>
+    <p class="lede">All jobs, by scheduled date. Today is {{ today }}.</p>
+  </div>
+  <a class="btn" href="{{ url_for('new_job') }}">New job</a>
+</div>
+
+{% if not jobs %}
+<section class="card">
+  <p class="empty">No jobs yet. <a href="{{ url_for('new_job') }}">Create one</a>.</p>
+</section>
+{% else %}
+<section class="card table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Job</th>
+        <th>Customer</th>
+        <th>Trade</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for j in jobs %}
+      <tr>
+        <td>{{ j.scheduled_date }}{% if j.scheduled_date == today %} <span class="hint">(today)</span>{% endif %}</td>
+        <td><a href="{{ url_for('job_detail', job_id=j.id) }}">{{ j.job_name }}</a></td>
+        <td>{{ j.customer_name }}</td>
+        <td>{{ j.trade or "—" }}</td>
+        <td><span class="badge badge-{{ j.state }}">{{ state_label(j.state) }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+{% endblock %}

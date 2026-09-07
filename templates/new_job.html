@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}New job · SkyHold{% endblock %}
+{% block content %}
+<p class="crumb"><a href="{{ url_for('jobs_list') }}">Jobs</a> · New</p>
+<section class="card">
+  <h1>New weather-sensitive job</h1>
+  <p class="lede">Creates a public status page. Decision starts at Scheduled until you Hold / Proceed / All-clear.</p>
+  <form method="post" action="{{ url_for('new_job') }}" class="stack">
+    <label>Job name / title *
+      <input name="job_name" required value="{{ form.job_name if form else '' }}" placeholder="Smith residence — roof dry-in">
+    </label>
+    <label>Customer name *
+      <input name="customer_name" required value="{{ form.customer_name if form else '' }}">
+    </label>
+    <label>Customer email
+      <input type="email" name="customer_email" value="{{ form.customer_email if form else '' }}">
+    </label>
+    <label>Customer phone <span class="hint">(E.164 preferred for SMS)</span>
+      <input name="customer_phone" value="{{ form.customer_phone if form else '' }}">
+    </label>
+    <label>Crew emails <span class="hint">(comma-separated)</span>
+      <input name="crew_emails" value="{{ form.crew_emails if form else '' }}" placeholder="crew1@example.com, lead@example.com">
+    </label>
+    <label>Crew phones <span class="hint">(comma-separated)</span>
+      <input name="crew_phones" value="{{ form.crew_phones if form else '' }}">
+    </label>
+    <label>Job / WO ref
+      <input name="job_ref" value="{{ form.job_ref if form else '' }}">
+    </label>
+    <label>Site label <span class="hint">(plain text — no map)</span>
+      <input name="site_label" value="{{ form.site_label if form else '' }}" placeholder="14 Harbor Lane">
+    </label>
+    <label>Scheduled date *
+      <input type="date" name="scheduled_date" required value="{{ form.scheduled_date if form else default_date }}">
+    </label>
+    <label>Scheduled window
+      <input name="scheduled_window" value="{{ form.scheduled_window if form else '' }}" placeholder="7am–3pm">
+    </label>
+    <label>Trade
+      <select name="trade">
+        <option value="">—</option>
+        {% for t in TRADES %}
+        <option value="{{ t }}" {% if form and form.trade == t %}selected{% endif %}>{{ t }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Notes <span class="hint">(internal)</span>
+      <textarea name="notes" rows="3">{{ form.notes if form else '' }}</textarea>
+    </label>
+    <label class="check-row">
+      <input type="checkbox" name="weather_sensitive" value="1" checked>
+      Weather sensitive
+    </label>
+    <button type="submit" class="btn">Create job</button>
+  </form>
+</section>
+{% endblock %}
